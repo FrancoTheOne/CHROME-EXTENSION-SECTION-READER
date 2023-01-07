@@ -1,0 +1,14 @@
+body {
+  text-align: center;
+  width: 200px;
+}
+
+button {
+  width: 100%;
+  color: black;
+  background-color: lightblue;
+  border-width: 0px;
+  border-radius: 20px;
+  padding: 5px;
+  cursor: pointer;
+}

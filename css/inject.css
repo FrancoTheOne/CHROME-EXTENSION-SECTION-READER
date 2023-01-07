@@ -1,0 +1,57 @@
+:root {
+  --MAX_Z_INDEX: 2147483647;
+}
+
+@keyframes sectionReaderFadeAnimation {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+#selection-reader-floating-button {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 6px 10px 0 #666;
+  padding: 0.5rem;
+  z-index: var(--MAX_Z_INDEX);
+  color: black;
+  font-size: 0.75rem;
+  animation: sectionReaderFadeAnimation 0.5s ease-out;
+  transition: all 0.1s ease-in-out;
+}
+
+#selection-reader-floating-button-help {
+  display: none;
+  color: #666;
+  font-size: 0.6rem;
+}
+
+#selection-reader-floating-button-hover {
+  display: block;
+  color: #666;
+  font-size: 0.6rem;
+  line-height: 0.75rem;
+}
+
+#selection-reader-floating-button:hover {
+  box-shadow: 0 6px 14px 0 #666;
+  transform: scale(1.05);
+  cursor: pointer;
+}
+
+#selection-reader-floating-button:hover #selection-reader-floating-button-help {
+  display: block;
+}
+
+#selection-reader-floating-button:hover
+  #selection-reader-floating-button-hover {
+  display: none;
+}
