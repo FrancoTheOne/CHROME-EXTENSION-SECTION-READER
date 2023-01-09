@@ -13,7 +13,7 @@
   }
 }
 
-#selection-reader-floating-button {
+#sectionReaderFloatingButton {
   position: fixed;
   right: 32px;
   bottom: 32px;
@@ -28,30 +28,57 @@
   transition: all 0.1s ease-in-out;
 }
 
-#selection-reader-floating-button-help {
+#sectionReaderFloatingButtonHelp {
   display: none;
   color: #666;
   font-size: 0.6rem;
 }
 
-#selection-reader-floating-button-hover {
+#sectionReaderFloatingButtonHover {
   display: block;
   color: #666;
   font-size: 0.6rem;
   line-height: 0.75rem;
 }
 
-#selection-reader-floating-button:hover {
+#sectionReaderFloatingButton:hover {
   box-shadow: 0 6px 14px 0 #666;
   transform: scale(1.05);
   cursor: pointer;
 }
 
-#selection-reader-floating-button:hover #selection-reader-floating-button-help {
+#sectionReaderFloatingButton:hover #sectionReaderFloatingButtonHelp {
   display: block;
 }
 
-#selection-reader-floating-button:hover
-  #selection-reader-floating-button-hover {
+#sectionReaderFloatingButton:hover #sectionReaderFloatingButtonHover {
   display: none;
+}
+
+.section-reader-cursor-select {
+  cursor: copy;
+}
+
+.section-reader-highlight {
+  background: rgba(255, 0, 0, 0.5) !important;
+  outline: 4px dashed darkblue !important;
+  outline-offset: -2px !important;
+  z-index: var(--MAX_Z_INDEX) - 1 !important;
+}
+
+.section-reader-overflow-hidden {
+  overflow: hidden !important;
+}
+
+.section-reader-z-index-max {
+  z-index: var(--MAX_Z_INDEX);
+}
+
+.section-reader-focus-section {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  z-index: var(--MAX_Z_INDEX);
+  margin: 0;
+  padding: 1rem max(1rem, 17px) 30vh 1rem;
 }

@@ -1,41 +1,38 @@
-const btnSelect = document.getElementById("btnSelect");
-let isCSSInserted = false;
+async function getActiveTabURL() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return tab;
+}
 
-btnSelect.addEventListener("click", async () => {
-  let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  console.log(isCSSInserted);
-
-  if (!isCSSInserted) {
-    isCSSInserted = true;
-    chrome.scripting.insertCSS({
-      target: { tabId: tab.id },
-      files: ["css/inject.css"],
-    });
+function onBtnSelect(tabId) {
+  try {
+    chrome.tabs.sendMessage(
+      tabId,
+      {
+        type: "SECTION_READER_SELECT",
+        value: tabId,
+      },
+      async (response) => {
+        if (!response.isCSSInjected) {
+          await chrome.scripting.insertCSS({
+            target: { tabId: response.tabId },
+            files: ["css/inject.css"],
+          });
+        }
+        await chrome.scripting.executeScript({
+          target: { tabId: response.tabId },
+          function: getScriptInject,
+        });
+        window.close();
+      }
+    );
+  } catch (err) {
+    console.log("Section reader:", "onBtnSelect", err);
   }
+}
 
-  chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    function: selectSection,
-  });
-
-  window.close();
-});
-
-// const removeCSS = async  () => {
-//   try {
-//     let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-//     await chrome.scripting.removeCSS({
-//       target: { tabId: tab.id },
-//       files: ["css/inject.css"],})
-//   } catch (err) {
-//     console.error(`failed to remove CSS: ${err}`)
-//   }
-// }
-
-function selectSection() {
-  document.addEventListener("click", getSelectionData);
-
-  const infoDivChildren = {
+function getScriptInject() {
+  let infoDiv;
+  const InfoType = {
     Title: 0,
     Selectors: 1,
     Dimensions: 2,
@@ -43,71 +40,83 @@ function selectSection() {
     Hover: 4,
   };
 
-  const infoDiv = document.createElement("div");
-  infoDiv.id = "selection-reader-floating-button";
-  Object.keys(infoDivChildren).forEach((key) => {
-    const child = document.createElement("div");
-    child.id = `${infoDiv.id}-${key.toLowerCase()}`;
-    infoDiv.appendChild(child);
-  });
-  infoDiv.children[infoDivChildren.Title].innerHTML = "Select Section";
-  infoDiv.children[infoDivChildren.Help].innerHTML =
-    "<b>Left click</b> to select selector.<br/>More precise selection in next step.";
-  infoDiv.children[infoDivChildren.Hover].innerHTML = "Go here for tips";
+  function startCursorSelect() {
+    initInfoDiv();
+    updateInfoDiv(InfoType.Title, "Select Section");
+    updateInfoDiv(
+      InfoType.Help,
+      `<b>Left click</b> to select selector.<br/>
+      More precise selection in next step.<br/>
+      Press <b>Q</b> to quit.`
+    );
+    updateInfoDiv(InfoType.Hover, "Go here for tips");
 
-  document.body.appendChild(infoDiv);
+    document.body.classList.add("section-reader-cursor-select");
+    document.addEventListener("click", onCursorSelectClick);
+    document.addEventListener("keypress", onCursorSelectKeypress);
 
-  document.body.style.cursor = "copy";
-  document.body.focus();
+    document.body.focus();
+  }
+
+  function exitCursorSelect() {
+    document.body.classList.remove("section-reader-cursor-select");
+    document.removeEventListener("click", onCursorSelectClick);
+    document.removeEventListener("keypress", onCursorSelectKeypress);
+  }
+
+  function initInfoDiv() {
+    infoDiv = document.createElement("div");
+    infoDiv.id = "sectionReaderFloatingButton";
+    Object.keys(InfoType).forEach((key) => {
+      const child = document.createElement("div");
+      child.id = `${infoDiv.id}${key}`;
+      infoDiv.appendChild(child);
+    });
+    document.body.appendChild(infoDiv);
+  }
+
+  function updateInfoDiv(infoType, innerHTML) {
+    infoDiv.children[infoType].innerHTML = innerHTML;
+  }
 
   let selectorIdx = 0;
   let selectors;
 
-  function getSelectionData() {
-    window.addEventListener("keypress", getKeyCode);
-    infoDiv.addEventListener("click", confirmSelectorListener);
-
-    selectors = document.body.querySelectorAll(":hover");
-    selectorIdx = selectors.length - 1;
-
-    setBackground(selectors[selectorIdx]);
-
-    document.body.style.cursor = "";
-    infoDiv.children[infoDivChildren.Title].innerHTML = "";
-    infoDiv.children[infoDivChildren.Help].innerHTML =
-      "Press <b>Z</b> and <b>X</b> to toggle selector.<br/>Press <b>C</b> or this button to confirm.<br/>Press <b>Q</b> to quit.";
-    displayCurrentSelectorInfo();
-
-    document.removeEventListener("click", getSelectionData);
+  function onCursorSelectClick() {
+    exitCursorSelect();
+    startSelectorToggle();
   }
 
-  function getKeyCode(event) {
-    switch (event.code) {
-      case "KeyZ":
-        removeBackground(selectors[selectorIdx]);
-        selectorIdx = (selectorIdx + selectors.length - 1) % selectors.length;
-        setBackground(selectors[selectorIdx]);
-        selectors[selectorIdx].scrollIntoView();
-        displayCurrentSelectorInfo();
-        break;
-      case "KeyX":
-        removeBackground(selectors[selectorIdx]);
-        selectorIdx = (selectorIdx + 1) % selectors.length;
-        setBackground(selectors[selectorIdx]);
-        selectors[selectorIdx].scrollIntoView();
-        displayCurrentSelectorInfo();
-        break;
-      case "KeyC":
-        confirmSelector();
-        break;
-      case "KeyQ":
-        quitSelectData();
-        break;
+  function onCursorSelectKeypress(event) {
+    if (event.code === "KeyQ") {
+      exitCursorSelect();
+      exit();
     }
   }
 
-  function confirmSelectorListener(event) {
-    confirmSelector();
+  function startSelectorToggle() {
+    updateInfoDiv(InfoType.Title, "");
+    updateInfoDiv(
+      InfoType.Help,
+      `Press <b>Z</b> and <b>X</b> to toggle selector.<br/>
+      Press <b>C</b> or this button to confirm.<br/>
+      Press <b>Q</b> to quit.`
+    );
+
+    selectors = document.body.querySelectorAll(":hover");
+    selectorIdx = selectors.length - 1;
+    displayCurrentSelectorInfo();
+
+    window.addEventListener("keypress", onSelectorToggleKeypress);
+    infoDiv.addEventListener("click", onSelectorToggleInfoDivClick);
+
+    setBackground(selectors[selectorIdx]);
+  }
+
+  function exitSelectorToggle() {
+    window.removeEventListener("keypress", onSelectorToggleKeypress);
+    infoDiv.removeEventListener("click", onSelectorToggleInfoDivClick);
+    removeBackground(selectors[selectorIdx]);
   }
 
   function displayCurrentSelectorInfo() {
@@ -116,67 +125,102 @@ function selectSection() {
       .reduce((acc, el) => acc + el.tagName.toLowerCase() + ".", "");
     tags += selectors[selectorIdx].tagName;
     const dimensions = `${selectors[selectorIdx].clientWidth} \u00D7 ${selectors[selectorIdx].clientHeight}`;
-    infoDiv.children[infoDivChildren.Selectors].innerHTML = tags;
-    infoDiv.children[infoDivChildren.Dimensions].innerHTML = dimensions;
+    updateInfoDiv(InfoType.Selectors, tags);
+    updateInfoDiv(InfoType.Dimensions, dimensions);
   }
 
-  let prevStyleBackground = "";
-  let prevStyleOutline = "";
-  let prevStyleOutlineOffset = "";
+  function selectorToggle(newIdx) {
+    removeBackground(selectors[selectorIdx]);
+    selectorIdx = newIdx;
+    setBackground(selectors[newIdx]);
+    selectors[newIdx].scrollIntoView();
+    displayCurrentSelectorInfo();
+  }
 
   function setBackground(el) {
-    prevStyleBackground = el.style.background;
-    prevStyleOutline = el.style.outline;
-    prevStyleOutlineOffset = el.style.outlineOffset;
-    el.style.background = "rgba(255,0,0,0.5)";
-    el.style.outline = "4px dashed darkblue";
-    el.style.outlineOffset = "-2px";
+    el.classList.add("section-reader-highlight");
   }
+
   function removeBackground(el) {
-    el.style.background = prevStyleBackground;
-    el.style.outline = prevStyleOutline;
-    el.style.outlineOffset = prevStyleOutlineOffset;
+    el.classList.remove("section-reader-highlight");
   }
 
   function confirmSelector() {
-    setFocus(selectors[selectorIdx]);
-    window.removeEventListener("keypress", getKeyCode);
-    infoDiv.removeEventListener("click", confirmSelectorListener);
+    exitSelectorToggle();
+    startFocusSection();
   }
 
-  function quitSelectData() {
-    removeBackground(selectors[selectorIdx]);
-    window.removeEventListener("keypress", getKeyCode);
-    infoDiv.removeEventListener("click", confirmSelectorListener);
-    infoDiv.remove();
+  function onSelectorToggleKeypress(event) {
+    switch (event.code) {
+      case "KeyZ":
+        selectorToggle((selectorIdx + selectors.length - 1) % selectors.length);
+        break;
+      case "KeyX":
+        selectorToggle((selectorIdx + 1) % selectors.length);
+        break;
+      case "KeyC":
+        confirmSelector();
+        break;
+      case "KeyQ":
+        exitSelectorToggle();
+        exit();
+        break;
+    }
   }
 
-  let prevStylesZIndex = [];
-  const MAX_Z_INDEX = 2147483647;
+  function onSelectorToggleInfoDivClick(event) {
+    confirmSelector();
+  }
 
-  function setFocus(el) {
-    document.body.style.overflow = "hidden";
+  let isFocusSectionBackgroundTransparent = false;
+
+  function startFocusSection() {
+    document.body.classList.add("section-reader-overflow-hidden");
     if (selectorIdx) {
       Array.from(selectors)
         .slice(0, selectorIdx)
-        .forEach((el) => {
-          prevStylesZIndex.push(el.style.zIndex);
-          el.style.zIndex = MAX_Z_INDEX;
-        });
+        .forEach((el) => el.classList.add("section-reader-z-index-max"));
     }
 
-    console.log(prevStylesZIndex);
-    el.style.cssText = `
-      position: fixed;
-      inset: 0;
-      overflow-y: auto;
-      z-index: ${MAX_Z_INDEX};
-      margin: 0;
-      padding: 1rem max(1rem, 17px) 30vh 1rem;
-    `;
-    if (!el.style.background) {
-      el.style.background = "white";
+    selectors[selectorIdx].classList.add("section-reader-focus-section");
+    if (!selectors[selectorIdx].style.background) {
+      isFocusSectionBackgroundTransparent = true;
+      selectors[selectorIdx].style.background = "white";
     }
-    el.focus();
+
+    selectors[selectorIdx].focus();
   }
+
+  function main() {
+    if (window.isChromeExtensionSectionReaderScriptInjected !== true) {
+      window.isChromeExtensionSectionReaderScriptInjected = true;
+    } else {
+      console.log("Section reader:", "Script injection rejected.");
+      return true;
+    }
+
+    startCursorSelect();
+  }
+
+  function exit() {
+    infoDiv.remove();
+    window.isChromeExtensionSectionReaderScriptInjected = false;
+  }
+
+  main();
 }
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const activeTab = await getActiveTabURL();
+  const btnSelect = document.getElementById("btnSelect");
+  btnSelect.addEventListener("click", () => onBtnSelect(activeTab.id));
+});
+
+// chrome.storage.sync.get(["testing"]).then((data) => {
+//   if (data.testing) {
+//     alert(data.testing);
+//   } else {
+//     alert("none");
+//     chrome.storage.sync.set({ testing: "hehe" });
+//   }
+// });
