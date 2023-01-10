@@ -17,28 +17,31 @@
   position: fixed;
   right: 32px;
   bottom: 32px;
+  max-width: calc(50% - 32px);
   border-radius: 16px;
-  background: white;
-  box-shadow: 0 6px 10px 0 #666;
-  padding: 0.5rem;
+  padding: 8px;
   z-index: var(--MAX_Z_INDEX);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   color: black;
-  font-size: 0.75rem;
+  font-size: 12px;
   animation: sectionReaderFadeAnimation 0.5s ease-out;
-  transition: all 0.1s ease-in-out;
 }
 
 #sectionReaderFloatingButtonHelp {
   display: none;
   color: #666;
-  font-size: 0.6rem;
+  font-size: 10px;
 }
 
 #sectionReaderFloatingButtonHover {
   display: block;
   color: #666;
-  font-size: 0.6rem;
-  line-height: 0.75rem;
+  font-size: 10px;
+  line-height: 12px;
 }
 
 #sectionReaderFloatingButton:hover {
@@ -55,15 +58,25 @@
   display: none;
 }
 
-.section-reader-cursor-select {
-  cursor: copy;
+#sectionReaderHighlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  z-index: var(--MAX_Z_INDEX) - 1;
+  pointer-events: none;
+  background-color: rgba(255, 0, 0, 0.2);
+  background-image: radial-gradient(#f00 0.5px, #f000 0.5px),
+    radial-gradient(#f00 0.5px, #f000 0.5px);
+  background-size: 16px 16px;
+  background-position: 0 0px, 8px 8px;
+  outline: 1px dashed #f00;
+  outline-offset: -1px;
 }
 
-.section-reader-highlight {
-  background: rgba(255, 0, 0, 0.5) !important;
-  outline: 4px dashed darkblue !important;
-  outline-offset: -2px !important;
-  z-index: var(--MAX_Z_INDEX) - 1 !important;
+.section-reader-cursor-select {
+  cursor: copy;
 }
 
 .section-reader-overflow-hidden {
@@ -71,14 +84,24 @@
 }
 
 .section-reader-z-index-max {
-  z-index: var(--MAX_Z_INDEX);
+  z-index: var(--MAX_Z_INDEX) !important;
 }
 
-.section-reader-focus-section {
-  position: fixed;
-  inset: 0;
-  overflow-y: auto;
-  z-index: var(--MAX_Z_INDEX);
-  margin: 0;
-  padding: 1rem max(1rem, 17px) 30vh 1rem;
+.section-reader-floating-button-hide {
+  opacity: 0;
+  transition: all 0.5s ease-in-out;
+  pointer-events: none;
 }
+
+/* .section-reader-focus-section {
+  position: fixed !important;
+  inset: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: none !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  z-index: var(--MAX_Z_INDEX) !important;
+  margin: 0 !important;
+  padding: 16px max(1rem, 17px) 30vh 1rem !important;
+} */

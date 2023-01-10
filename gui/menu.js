@@ -94,6 +94,8 @@ function getScriptInject() {
     }
   }
 
+  let highlightDiv;
+
   function startSelectorToggle() {
     updateInfoDiv(InfoType.Title, "");
     updateInfoDiv(
@@ -110,18 +112,20 @@ function getScriptInject() {
     window.addEventListener("keypress", onSelectorToggleKeypress);
     infoDiv.addEventListener("click", onSelectorToggleInfoDivClick);
 
-    setBackground(selectors[selectorIdx]);
+    initHighlightDiv();
+    updateHighlightDiv();
   }
 
   function exitSelectorToggle() {
     window.removeEventListener("keypress", onSelectorToggleKeypress);
     infoDiv.removeEventListener("click", onSelectorToggleInfoDivClick);
-    removeBackground(selectors[selectorIdx]);
+    highlightDiv.remove();
   }
 
   function displayCurrentSelectorInfo() {
-    let tags = Array.from(selectors)
-      .slice(0, selectorIdx)
+    let tags = selectorIdx - 4 > 0 ? "..." : "";
+    tags += Array.from(selectors)
+      .slice(Math.max(0, selectorIdx - 4), selectorIdx)
       .reduce((acc, el) => acc + el.tagName.toLowerCase() + ".", "");
     tags += selectors[selectorIdx].tagName;
     const dimensions = `${selectors[selectorIdx].clientWidth} \u00D7 ${selectors[selectorIdx].clientHeight}`;
@@ -130,19 +134,31 @@ function getScriptInject() {
   }
 
   function selectorToggle(newIdx) {
-    removeBackground(selectors[selectorIdx]);
     selectorIdx = newIdx;
-    setBackground(selectors[newIdx]);
-    selectors[newIdx].scrollIntoView();
+    updateHighlightDiv();
     displayCurrentSelectorInfo();
   }
 
-  function setBackground(el) {
-    el.classList.add("section-reader-highlight");
+  function initHighlightDiv() {
+    highlightDiv = document.createElement("div");
+    highlightDiv.id = "sectionReaderHighlight";
+    document.body.appendChild(highlightDiv);
   }
 
-  function removeBackground(el) {
-    el.classList.remove("section-reader-highlight");
+  function updateHighlightDiv() {
+    let offsetTop = 0;
+    let offsetLeft = 0;
+    let curElement = selectors[selectorIdx];
+    do {
+      offsetTop += curElement.offsetTop ?? 0;
+      offsetLeft += curElement.offsetLeft ?? 0;
+      curElement = curElement.offsetParent;
+    } while (curElement);
+
+    highlightDiv.style.top = `${offsetTop}px`;
+    highlightDiv.style.left = `${offsetLeft}px`;
+    highlightDiv.style.width = `${selectors[selectorIdx].offsetWidth}px`;
+    highlightDiv.style.height = `${selectors[selectorIdx].offsetHeight}px`;
   }
 
   function confirmSelector() {
@@ -173,22 +189,61 @@ function getScriptInject() {
   }
 
   let isFocusSectionBackgroundTransparent = false;
+  let originalFocusSectionCssText;
 
   function startFocusSection() {
     document.body.classList.add("section-reader-overflow-hidden");
     if (selectorIdx) {
       Array.from(selectors)
-        .slice(0, selectorIdx)
+        .slice(0, selectorIdx + 1)
         .forEach((el) => el.classList.add("section-reader-z-index-max"));
     }
 
-    selectors[selectorIdx].classList.add("section-reader-focus-section");
+    originalFocusSectionCssText = selectors[selectorIdx].style.cssText;
+    selectors[selectorIdx].style.cssText = `
+      position: fixed !important; inset: 0 !important;
+      width: auto !important; height: auto !important;
+      max-width: none !important; max-height: none !important;
+      margin: 0 !important;
+      padding: 16px 17px 30vh 16px !important;
+      overflow-y: auto !important;
+    `;
+
     if (!selectors[selectorIdx].style.background) {
       isFocusSectionBackgroundTransparent = true;
       selectors[selectorIdx].style.background = "white";
     }
 
+    window.addEventListener("keypress", onFocusSelectionKeypress);
+
+    infoDiv.classList.add("section-reader-floating-button-hide");
+
     selectors[selectorIdx].focus();
+  }
+
+  function exitFocusSelection() {
+    document.body.classList.remove("section-reader-overflow-hidden");
+    if (selectorIdx) {
+      Array.from(selectors)
+        .slice(0, selectorIdx + 1)
+        .forEach((el) => el.classList.remove("section-reader-z-index-max"));
+    }
+
+    selectors[selectorIdx].style.cssText = originalFocusSectionCssText;
+    if (isFocusSectionBackgroundTransparent) {
+      selectors[selectorIdx].style.background = "";
+    }
+
+    window.removeEventListener("keypress", onFocusSelectionKeypress);
+  }
+
+  function onFocusSelectionKeypress(event) {
+    switch (event.code) {
+      case "KeyQ":
+        exitFocusSelection();
+        exit();
+        break;
+    }
   }
 
   function main() {
